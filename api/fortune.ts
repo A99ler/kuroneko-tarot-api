@@ -61,8 +61,10 @@ export default async function handler(req, res) {
     }
 
     const text =
-      data.output?.[0]?.content?.[0]?.text ??
-      "うまく占えなかったみたい。もう一度引いてみて。";
+      data.output
+        ?.flatMap((item: any) => item.content ?? [])
+        ?.find((part: any) => part.type === "output_text")
+        ?.text?.trim() || "うまく占えなかったみたい。もう一度引いてみて。";
 
     return res.status(200).json({
       ok: true,
