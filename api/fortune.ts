@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -16,14 +15,17 @@ export default async function handler(req, res) {
     const { theme, keywords } = req.body || {};
 
     if (!theme || !Array.isArray(keywords) || keywords.length !== 3) {
-      return res.status(400).json({ error: "theme と keywords(3件) が必要です" });
+      return res.status(400).json({
+        ok: false,
+        error: "theme と keywords(3件) が必要です",
+      });
     }
 
     const prompt = `
 あなたは黒猫の占い師です。
-少しクールで優しいです。
+少しクールでやさしい口調です。
 短い言葉で刺してください。
-説教くさくしないでください。
+説教しないでください。
 1〜2文で返してください。
 恋愛に関する現実的な一言にしてください。
 少しだけ猫らしい言い回しはOKですが、やりすぎないでください。
@@ -35,8 +37,8 @@ export default async function handler(req, res) {
 - 日本語
 - 短く
 - 具体性を少し入れる
-- theme が「恋を引寄せ」なら、アイテム・色・場所・雰囲気などに寄せる
-- theme が「恋の注意報」なら、避けたい行動や直したい振る舞いに寄せる
+- 「恋を引寄せ」なら、色・アイテム・場所・雰囲気に寄せる
+- 「恋の注意報」なら、避けたい行動や直したい振る舞いに寄せる
 `;
 
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -55,6 +57,7 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(response.status).json({
+        ok: false,
         error: "OpenAI API error",
         details: data,
       });
@@ -62,8 +65,8 @@ export default async function handler(req, res) {
 
     const text =
       data.output
-        ?.flatMap((item: any) => item.content ?? [])
-        ?.find((part: any) => part.type === "output_text")
+        ?.flatMap((item) => item.content ?? [])
+        ?.find((part) => part.type === "output_text")
         ?.text?.trim() || "うまく占えなかったみたい。もう一度引いてみて。";
 
     return res.status(200).json({
@@ -72,6 +75,7 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     return res.status(500).json({
+      ok: false,
       error: "Server error",
       details: String(error),
     });
