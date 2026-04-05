@@ -35,6 +35,7 @@ export default async function handler(req, res) {
 - 抽象表現を減らす
 - ふわっとした表現を避ける
 - 猫語は禁止（にゃ、ニャ、にゃん 等）
+- 敬語にしない
 
 【文の長さ】
 - 2文まで
@@ -63,6 +64,11 @@ export default async function handler(req, res) {
 キーワード: ${keywords.join("、")}
 
 出力は占い文だけにしてください。
+
+出力例:
+- 気持ちが急ぎやすい日。今日は返信を急がない方がいい。
+- 恋の流れは悪くない。白い服を選ぶとやわらかく見える。
+- 今は考えすぎやすい。会う前に言いたいことを一つに絞って。
 `;
 
     const response = await fetch("https://api.openai.com/v1/responses", {
