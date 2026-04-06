@@ -1,3 +1,7 @@
+function pickOne(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -8,11 +12,17 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
   try {
-    const { theme, keywords } = req.body || {};
+    const {
+      theme,
+      keywords,
+      profile,
+      attractTags,
+      warningTags,
+    } = req.body || {};
 
     if (!theme || !Array.isArray(keywords) || keywords.length !== 3) {
       return res.status(400).json({
@@ -21,54 +31,97 @@ export default async function handler(req, res) {
       });
     }
 
+    if (!profile || !profile.tone || !profile.phase) {
+      return res.status(400).json({
+        ok: false,
+        error: "profile が必要です",
+      });
+    }
+
+    let stateLine = "";
+    let actionLine = "";
+    let detailType = "";
+    let detailValue = "";
+
+    if (theme === "恋を引寄せ") {
+      if (!attractTags) {
+        return res.status(400).json({
+          ok: false,
+          error: "attractTags が必要です",
+        });
+      }
+
+      stateLine = pickOne(attractTags.stateHints || ["流れは悪くない"]);
+      actionLine = pickOne(attractTags.actionHints || ["今日は自然に話して"]);
+
+      const detailBuckets = [
+        { type: "色", values: attractTags.colors || [] },
+        { type: "小物", values: attractTags.items || [] },
+        { type: "場所", values: attractTags.places || [] },
+        { type: "雰囲気", values: attractTags.moods || [] },
+      ].filter((bucket) => Array.isArray(bucket.values) && bucket.values.length > 0);
+
+      const chosenBucket = pickOne(detailBuckets);
+      detailType = chosenBucket?.type || "雰囲気";
+      detailValue = pickOne(chosenBucket?.values || ["落ち着いた雰囲気"]);
+    } else {
+      if (!warningTags) {
+        return res.status(400).json({
+          ok: false,
+          error: "warningTags が必要です",
+        });
+      }
+
+      stateLine = pickOne(warningTags.cautionStates || ["気持ちがズレやすい日"]);
+      actionLine = pickOne(warningTags.avoidActions || ["返事を急がないで"]);
+      detailType = "弱点";
+      detailValue = pickOne(warningTags.weakPoints || ["言いすぎ"]);
+    }
+
     const prompt = `
-あなたは黒猫の占い師です。
-落ち着いていて、やさしいが、言い方はシンプルです。
+あなたは黒猫の恋愛占い師です。
+役割は、渡された素材を短く自然な日本語に整えることだけです。
 
-以下を必ず守ってください。
+【絶対ルール】
+- 1文だけ
+- 26〜40文字くらい
+- 中学生でも分かる日本語
+- 比喩禁止
+- 詩っぽい表現禁止
+- 猫語禁止
+- 難しい言い回し禁止
+- 景色の描写は禁止
+- ふわっとした話は禁止
+- 素材を勝手に増やさない
+- 明るいカードで絶望的にしない
+- 悪いカードで不自然に前向きにしない
 
-【最重要】
-- 分かりやすい日本語だけを使う
-- 中学生でもすぐ分かる言い方にする
-- 詩っぽくしない
-- 比喩を使わない
-- 抽象表現を減らす
-- ふわっとした表現を避ける
-- 猫語は禁止（にゃ、ニャ、にゃん 等）
-- 敬語にしない
-
-【文の長さ】
-- 2文まで
-- 1文は短く
-- 全体で40〜55文字くらい
-- 長く説明しない
-
-【内容】
-- 1文目で「今の状態」をはっきり言う
-- 2文目で「今日やるといいこと」か「避けた方がいいこと」を1つだけ言う
-- 1回で理解できる内容にする
-- 1文に情報を詰め込みすぎない
-
-【テーマ別ルール】
-- 「恋を引寄せ」なら、色・服・小物・場所のどれかを1つだけ入れる
-- 「恋の注意報」なら、やめた方がいい行動を1つだけ入れる
-
-【禁止】
-- 世界観を盛りすぎる表現
-- 景色の描写
-- 哲学っぽい言い回し
-- 「運命」「波動」「光」「気配」などの曖昧語の多用
-- 難しい言い回し
-
-テーマ: ${theme}
+【カードの方向】
+トーン: ${profile.tone}
+段階: ${profile.phase}
 キーワード: ${keywords.join("、")}
 
-出力は占い文だけにしてください。
+【素材】
+状態: ${stateLine}
+行動: ${actionLine}
+補足種別: ${detailType}
+補足内容: ${detailValue}
 
-出力例:
-- 気持ちが急ぎやすい日。今日は返信を急がない方がいい。
-- 恋の流れは悪くない。白い服を選ぶとやわらかく見える。
-- 今は考えすぎやすい。会う前に言いたいことを一つに絞って。
+【テーマ別ルール】
+- 恋を引寄せ:
+  状態 + 行動 + 補足内容 を短くつなぐ
+  色・小物・場所・雰囲気のどれか1つだけ入れる
+- 恋の注意報:
+  状態 + 避けたい行動 を短くつなぐ
+  説教っぽくしない
+  不安をあおりすぎない
+
+【文の方向】
+- positive: 前向き、安心、動きやすい
+- neutral: 落ち着き、調整、丁寧
+- negative: 注意、慎重、ズレ回避
+
+出力は占い文だけにしてください。
 `;
 
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -102,6 +155,15 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       result: text,
+      debug: {
+        theme,
+        tone: profile.tone,
+        phase: profile.phase,
+        stateLine,
+        actionLine,
+        detailType,
+        detailValue,
+      },
     });
   } catch (error) {
     return res.status(500).json({
